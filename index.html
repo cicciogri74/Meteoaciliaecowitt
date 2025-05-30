@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stazione Meteo IROME8355</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f0f8ff; }
+    .card { background: white; padding: 1rem; border-radius: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+    h1 { color: #0077b6; }
+  </style>
+</head>
+<body>
+  <h1>Stazione Meteo IROME8355</h1>
+  <div class="card" id="meteo">
+    <p>Temperatura: <span id="temp">--</span> °C</p>
+    <p>Umidità: <span id="hum">--</span> %</p>
+    <p>Vento: <span id="wind">--</span> km/h</p>
+  </div>
+
+  <script>
+    async function fetchWeather() {
+      const response = await fetch('https://api.weather.com/v2/pws/observations/current?stationId=IROME8355&format=json&units=m&apiKey=fe246ce400ae43c2a46ce400ae13c256');
+      const data = await response.json();
+      const obs = data.observations[0];
+      document.getElementById('temp').textContent = obs.imperial.temp;
+      document.getElementById('hum').textContent = obs.humidity;
+      document.getElementById('wind').textContent = obs.imperial.windSpeed;
+    }
+
+    fetchWeather();
+    setInterval(fetchWeather, 300000); // aggiorna ogni 5 minuti
+  </script>
+</body>
+</html>
