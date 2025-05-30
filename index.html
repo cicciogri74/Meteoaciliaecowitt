@@ -2,194 +2,433 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stazione Meteo IROME8355</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stazione Meteorologica</title>
+  <meta name="description" content="Stazione meteorologica in tempo reale. Dati su temperatura, umidità, vento e altro ancora." />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: sans-serif;
-      padding: 2rem;
-      background: #f0f8ff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom, #cce0ff, #f0f8ff);
+      padding: 40px;
+      text-align: center;
+      color: #003366;
     }
-    .card {
-      background: white;
-      padding: 1rem;
-      border-radius: 1rem;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
+
+    .weather-container {
+      background-color: #ffffffee;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      max-width: 600px;
+      margin: auto;
     }
-    h1, h2 {
-      color: #0077b6;
-    }
-    .loading {
-      color: #888;
-      font-style: italic;
-    }
-    .error {
-      color: red;
+
+    #alert-banner {
+      background-color: #ffcccc;
+      color: #990000;
       font-weight: bold;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px auto;
+      max-width: 600px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      text-align: left;
+      display: none;
     }
-    .weather-icon {
-      width: 48px;
-      height: 48px;
+
+    h1 {
+      color: #004080;
+      margin-bottom: 20px;
+    }
+
+    .info-row {
+      margin: 8px 0;
+      font-size: 1.1rem;
+    }
+
+    .icon {
+      font-size: 22px;
       vertical-align: middle;
       margin-right: 8px;
     }
-    #map {
-      height: 300px;
-      border-radius: 1rem;
+
+    #chart-container {
+      margin-top: 30px;
     }
+
     canvas {
       max-width: 100%;
     }
-    .forecast-day {
-      margin-top: 0.5rem;
+
+    #error-message {
+      color: #c00;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .loading-spinner {
+      margin: 20px auto;
+      border: 5px solid #e0e0e0;
+      border-top: 5px solid #004080;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .update-note {
+      margin-top: 15px;
+      font-style: italic;
+      color: #666;
+    }
+
+    button {
+      margin: 15px 8px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #004080;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #forecast ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    #radarModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .radar-content {
+      position: relative;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: hidden;
+    }
+
+    .radar-content iframe {
+      width: 100%;
+      height: 450px;
+      border: none;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #c00;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>Stazione Meteo IROME8355</h1>
+  <h1>Stazione Meteorologica</h1>
+  <div class="weather-container" role="region" aria-live="polite" aria-label="Dati meteo attuali">
+    <div id="alert-banner" role="alert" aria-live="assertive"></div>
+    <div id="spinner" class="loading-spinner" role="status" aria-label="Caricamento dati meteo"></div>
+    <div id="weather" style="display: none;"></div>
+    <div id="error-message" role="alert"></div>
+    <div class="update-note">I dati si aggiornano ogni 10 minuti.</div>
+    <button onclick="manualRefresh()">Aggiorna Ora</button>
+    <button onclick="openRadarModal()">Radar Meteo</button>
 
-  <div class="card" id="meteo">
-    <p id="loading" class="loading">Caricamento dati meteo...</p>
-    <div id="weatherContent" style="display: none;">
-      <p><img id="icon" class="weather-icon" src="" alt="Icona meteo" /><span id="description">--</span></p>
-      <p>Temperatura: <span id="temp">--</span> °C</p>
-      <p>Umidità: <span id="hum">--</span> %</p>
-      <p>Vento: <span id="wind">--</span> km/h</p>
+    <div id="chart-container" aria-label="Grafico storico temperatura">
+      <canvas id="tempChart" height="150" role="img" aria-label="Grafico temperatura storica"></canvas>
     </div>
-    <p id="error" class="error" style="display:none;">Errore nel caricamento dei dati meteo.</p>
+    <div id="forecast" aria-label="Previsioni meteo prossimi giorni"></div>
   </div>
 
-  <div class="card">
-    <h2>Grafico Temperatura (ultime 12 ore)</h2>
-    <canvas id="tempChart" height="120"></canvas>
-  </div>
-
-  <div class="card">
-    <h2>Posizione Stazione</h2>
-    <div id="map"></div>
-  </div>
-
-  <div class="card">
-    <h2>Previsioni 3 Giorni</h2>
-    <div id="forecast">
-      <p class="loading">Caricamento previsioni...</p>
+  <div id="radarModal">
+    <div class="radar-content">
+      <button class="close-btn" onclick="closeRadarModal()">Chiudi</button>
+      <h2>Radar Meteorologico</h2>
+      <iframe src="https://embed.windy.com/embed2.html?lat=41.9&lon=12.5&detailLat=41.9&detailLon=12.5&width=650&height=450&zoom=6&level=surface&overlay=radar&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"></iframe>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <noscript>
+    <p style="color: red; font-weight: bold;">Per visualizzare i dati meteo, abilita JavaScript.</p>
+  </noscript>
 
   <script>
-    const stationId = "IROME8355";
     const apiKey = "fe246ce400ae43c2a46ce400ae13c256";
-    const lat = 41.91;
-    const lon = 12.52;
+    const defaultStationId = "IROME8355";
+    const tempHistory = JSON.parse(localStorage.getItem("tempHistory") || "[]");
 
-    async function fetchWeather() {
-      const loading = document.getElementById('loading');
-      const weatherContent = document.getElementById('weatherContent');
-      const error = document.getElementById('error');
-      loading.style.display = 'block';
-      error.style.display = 'none';
-      weatherContent.style.display = 'none';
+    let chart;
+    let currentLat = null;
+    let currentLon = null;
 
-      try {
-        const response = await fetch(`https://api.weather.com/v2/pws/observations/current?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`);
-        const data = await response.json();
-        const obs = data.observations[0];
+    function updateChart() {
+      const labels = tempHistory.map(e =>
+        new Date(e.time).toLocaleTimeString("it-IT", {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: "Europe/Rome"
+        })
+      );
+      const data = tempHistory.map(e => e.temp);
 
-        document.getElementById('temp').textContent = obs.metric.temp;
-        document.getElementById('hum').textContent = obs.humidity;
-        document.getElementById('wind').textContent = obs.metric.windSpeed;
-        document.getElementById('description').textContent = obs.wx_phrase || 'Condizioni meteo';
+      if (chart) chart.destroy();
+      const ctx = document.getElementById("tempChart").getContext("2d");
 
-        const iconUrl = `https://weather.com/static/icons/wu/${obs.icon}.svg`;
-        document.getElementById('icon').src = iconUrl;
-        document.getElementById('icon').alt = obs.icon;
-
-        loading.style.display = 'none';
-        weatherContent.style.display = 'block';
-      } catch (err) {
-        console.error("Errore fetch meteo:", err);
-        loading.style.display = 'none';
-        error.style.display = 'block';
-      }
-    }
-
-    async function fetchTemperatureChart() {
-      try {
-        const res = await fetch(`https://api.weather.com/v2/pws/history/hourly?stationId=${stationId}&format=json&units=m&hours=12&apiKey=${apiKey}`);
-        const data = await res.json();
-        const temps = data.observations.map(o => o.metric.temp);
-        const labels = data.observations.map(o => new Date(o.obsTimeUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-
-        const ctx = document.getElementById("tempChart").getContext("2d");
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Temperatura °C',
-              data: temps,
-              borderColor: '#0077b6',
-              backgroundColor: 'rgba(0, 119, 182, 0.1)',
-              tension: 0.3
-            }]
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Temperatura (°C)",
+            data: data,
+            borderColor: "#004080",
+            backgroundColor: "rgba(0, 64, 128, 0.1)",
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: false,
+              title: {
+                display: true,
+                text: "°C"
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Ora"
+              }
+            }
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: false } }
+          plugins: {
+            legend: {
+              labels: {
+                font: {
+                  size: 14
+                }
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false
+            }
+          },
+          interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
           }
-        });
-      } catch (e) {
-        console.error("Errore grafico:", e);
-      }
+        }
+      });
     }
 
-    async function fetchForecast() {
+    async function checkSevereWeather(lat, lon) {
+      const banner = document.getElementById("alert-banner");
+      banner.style.display = "none";
+      banner.innerHTML = "";
+
+      const url = `https://api.weather.com/v3/wx/alerts/current?geocode=${lat},${lon}&format=json&language=it-IT&apiKey=${apiKey}`;
+
       try {
-        const res = await fetch(`https://api.weather.com/v3/wx/forecast/daily/3day?geocode=${lat},${lon}&format=json&units=m&language=it-IT&apiKey=${apiKey}`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Errore allerte");
+
         const data = await res.json();
-        const forecastDiv = document.getElementById("forecast");
-        forecastDiv.innerHTML = "";
+        if (data.alerts && data.alerts.length > 0) {
+          const alert = data.alerts[0];
+          const title = alert.eventDescription || "Allerta Meteo";
+          const desc = alert.detailText?.split("\n")[0] || "Controlla le condizioni attuali.";
 
-        data.daypart[0].daypartName.forEach((label, i) => {
-          if (!label) return;
-          const icon = data.daypart[0].iconCode[i];
-          const desc = data.daypart[0].narrative[i];
-          const temp = data.daypart[0].temperature[i];
-          const time = label;
+          banner.innerHTML = `<strong>${title}</strong>: ${desc}`;
+          banner.style.display = "block";
 
-          const block = document.createElement("div");
-          block.className = "forecast-day";
-          block.innerHTML = `
-            <img src="https://weather.com/static/icons/wu/${icon}.svg" alt="${desc}" class="weather-icon" />
-            <strong>${time}:</strong> ${desc} (${temp} °C)
-          `;
-          forecastDiv.appendChild(block);
-        });
-      } catch (e) {
-        console.error("Errore previsioni:", e);
-        document.getElementById("forecast").innerHTML = "<p class='error'>Errore nel caricamento delle previsioni.</p>";
+          if (Notification.permission === "granted") {
+            new Notification(title, {
+              body: desc,
+              icon: "https://cdn-icons-png.flaticon.com/512/1779/1779940.png"
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Errore nel recupero delle allerte:", err);
       }
     }
 
-    // Mappa Leaflet
-    const map = L.map("map").setView([lat, lon], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-    L.marker([lat, lon]).addTo(map).bindPopup("Stazione IROME8355").openPopup();
+    async function getWeatherData(lat = null, lon = null) {
+      const spinner = document.getElementById("spinner");
+      const weatherEl = document.getElementById("weather");
+      const errorEl = document.getElementById("error-message");
 
-    // Esegui tutto
-    fetchWeather();
-    fetchTemperatureChart();
-    fetchForecast();
-    setInterval(fetchWeather, 300000);
-    setInterval(fetchForecast, 1800000); // previsioni ogni 30 minuti
+      spinner.style.display = "block";
+      weatherEl.style.display = "none";
+      errorEl.textContent = "";
+
+      let url;
+      if (lat !== null && lon !== null) {
+        url = `https://api.weather.com/v3/wx/conditions/current?geocode=${lat},${lon}&format=json&units=m&language=it-IT&apiKey=${apiKey}`;
+      } else {
+        url = `https://api.weather.com/v2/pws/observations/current?stationId=${defaultStationId}&format=json&units=m&apiKey=${apiKey}`;
+      }
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Errore HTTP: " + response.status);
+
+        const data = await response.json();
+        const obs = data.observations?.[0] ?? data;
+
+        const temp = obs?.metric?.temp ?? obs?.temperature ?? "N/A";
+        const humidity = obs?.humidity ?? "N/A";
+        const windSpeed = obs?.metric?.windSpeed ?? obs?.windSpeed ?? "N/A";
+        const pressure = obs?.metric?.pressure ?? obs?.pressureAltimeter ?? "N/A";
+        const obsTimeUtc = obs?.obsTimeUtc ?? obs?.validTimeLocal;
+        const obsTime = obsTimeUtc
+          ? new Date(obsTimeUtc).toLocaleString("it-IT", {
+              timeZone: "Europe/Rome",
+              day: "2-digit", month: "2-digit",
+              hour: "2-digit", minute: "2-digit", second: "2-digit"
+            }) + " (ora locale)"
+          : "N/A";
+
+        weatherEl.innerHTML = `
+          <div class="info-row"><span class="icon" role="img" aria-label="Temperatura">🌡️</span><strong>Temperatura:</strong> ${temp} °C</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Umidità">💧</span><strong>Umidità:</strong> ${humidity}%</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Vento">🌬️</span><strong>Vento:</strong> ${windSpeed} km/h</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Pressione">🧭</span><strong>Pressione:</strong> ${pressure} hPa</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Ultimo aggiornamento">🕐</span><strong>Ultimo aggiornamento:</strong> ${obsTime}</div>
+        `;
+
+        spinner.style.display = "none";
+        weatherEl.style.display = "block";
+
+        if (!isNaN(temp)) {
+          tempHistory.push({ time: Date.now(), temp: parseFloat(temp) });
+          if (tempHistory.length > 50) tempHistory.shift();
+          localStorage.setItem("tempHistory", JSON.stringify(tempHistory));
+        }
+
+        updateChart();
+      } catch (err) {
+        spinner.style.display = "none";
+        errorEl.textContent = "Errore: " + err.message;
+      }
+    }
+
+    async function getForecast(lat = null, lon = null) {
+      const forecastEl = document.getElementById("forecast");
+      forecastEl.innerHTML = "<p>Caricamento previsioni...</p>";
+
+      let url;
+      if (lat !== null && lon !== null) {
+        url = `https://api.weather.com/v3/wx/forecast/daily/5day?geocode=${lat},${lon}&format=json&units=m&language=it-IT&apiKey=${apiKey}`;
+      } else {
+        url = `https://api.weather.com/v3/wx/forecast/daily/5day?geocode=41.9028,12.4964&format=json&units=m&language=it-IT&apiKey=${apiKey}`;
+      }
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Errore previsioni");
+
+        const forecast = await res.json();
+        let html = `<h2>Previsioni 5 Giorni</h2><ul>`;
+        for (let i = 0; i < forecast.dayOfWeek.length; i++) {
+          html += `
+            <li>
+              <strong>${forecast.dayOfWeek[i]}</strong>: 
+              ${forecast.narrative[i]} <br />
+              🌡️ ${forecast.temperatureMin[i]}°C / ${forecast.temperatureMax[i]}°C
+            </li>
+          `;
+        }
+        html += `</ul>`;
+        forecastEl.innerHTML = html;
+      } catch (err) {
+        forecastEl.innerHTML = "<p>Errore nel caricamento delle previsioni.</p>";
+      }
+    }
+
+    function manualRefresh() {
+      if (currentLat !== null && currentLon !== null) {
+        getWeatherData(currentLat, currentLon);
+        getForecast(currentLat, currentLon);
+        checkSevereWeather(currentLat, currentLon);
+      } else {
+        getWeatherData();
+        getForecast();
+        checkSevereWeather(41.9028, 12.4964);
+      }
+    }
+
+    function startApp() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            currentLat = pos.coords.latitude;
+            currentLon = pos.coords.longitude;
+            getWeatherData(currentLat, currentLon);
+            getForecast(currentLat, currentLon);
+            checkSevereWeather(currentLat, currentLon);
+          },
+          () => {
+            getWeatherData();
+            getForecast();
+            checkSevereWeather(41.9028, 12.4964);
+          }
+        );
+      } else {
+        getWeatherData();
+        getForecast();
+        checkSevereWeather(41.9028, 12.4964);
+      }
+
+      setInterval(() => {
+        manualRefresh();
+      }, 600000); // ogni 10 minuti
+    }
+
+    function openRadarModal() {
+      document.getElementById("radarModal").style.display = "flex";
+    }
+
+    function closeRadarModal() {
+      document.getElementById("radarModal").style.display = "none";
+    }
+
+    // Richiesta permesso notifiche
+    if (Notification && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    startApp();
   </script>
 </body>
 </html>
