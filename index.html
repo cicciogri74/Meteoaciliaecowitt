@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Stazione Meteorologica</title>
-  <meta name="description" content="Stazione meteorologica in tempo reale. Dati su temperatura, umidità, vento e altro ancora." />
+  <meta name="description" content="Stazione meteorologica in tempo reale. Dati su temperatura, umiditÃ , vento e altro ancora." />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -22,19 +22,6 @@
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
       max-width: 600px;
       margin: auto;
-    }
-
-    #alert-banner {
-      background-color: #ffcccc;
-      color: #990000;
-      font-weight: bold;
-      padding: 15px;
-      border-radius: 10px;
-      margin: 20px auto;
-      max-width: 600px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      text-align: left;
-      display: none;
     }
 
     h1 {
@@ -148,7 +135,6 @@
 <body>
   <h1>Stazione Meteorologica</h1>
   <div class="weather-container" role="region" aria-live="polite" aria-label="Dati meteo attuali">
-    <div id="alert-banner" role="alert" aria-live="assertive"></div>
     <div id="spinner" class="loading-spinner" role="status" aria-label="Caricamento dati meteo"></div>
     <div id="weather" style="display: none;"></div>
     <div id="error-message" role="alert"></div>
@@ -202,7 +188,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: "Temperatura (°C)",
+            label: "Temperatura (Â°C)",
             data: data,
             borderColor: "#004080",
             backgroundColor: "rgba(0, 64, 128, 0.1)",
@@ -219,7 +205,7 @@
               beginAtZero: false,
               title: {
                 display: true,
-                text: "°C"
+                text: "Â°C"
               }
             },
             x: {
@@ -249,38 +235,6 @@
           }
         }
       });
-    }
-
-    async function checkSevereWeather(lat, lon) {
-      const banner = document.getElementById("alert-banner");
-      banner.style.display = "none";
-      banner.innerHTML = "";
-
-      const url = `https://api.weather.com/v3/wx/alerts/current?geocode=${lat},${lon}&format=json&language=it-IT&apiKey=${apiKey}`;
-
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Errore allerte");
-
-        const data = await res.json();
-        if (data.alerts && data.alerts.length > 0) {
-          const alert = data.alerts[0];
-          const title = alert.eventDescription || "Allerta Meteo";
-          const desc = alert.detailText?.split("\n")[0] || "Controlla le condizioni attuali.";
-
-          banner.innerHTML = `<strong>${title}</strong>: ${desc}`;
-          banner.style.display = "block";
-
-          if (Notification.permission === "granted") {
-            new Notification(title, {
-              body: desc,
-              icon: "https://cdn-icons-png.flaticon.com/512/1779/1779940.png"
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Errore nel recupero delle allerte:", err);
-      }
     }
 
     async function getWeatherData(lat = null, lon = null) {
@@ -320,11 +274,11 @@
           : "N/A";
 
         weatherEl.innerHTML = `
-          <div class="info-row"><span class="icon" role="img" aria-label="Temperatura">🌡️</span><strong>Temperatura:</strong> ${temp} °C</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Umidità">💧</span><strong>Umidità:</strong> ${humidity}%</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Vento">🌬️</span><strong>Vento:</strong> ${windSpeed} km/h</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Pressione">🧭</span><strong>Pressione:</strong> ${pressure} hPa</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Ultimo aggiornamento">🕐</span><strong>Ultimo aggiornamento:</strong> ${obsTime}</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Temperatura">ðŸŒ¡ï¸</span><strong>Temperatura:</strong> ${temp} Â°C</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="UmiditÃ ">ðŸ’§</span><strong>UmiditÃ :</strong> ${humidity}%</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Vento">ðŸŒ¬ï¸</span><strong>Vento:</strong> ${windSpeed} km/h</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Pressione">ðŸ§­</span><strong>Pressione:</strong> ${pressure} hPa</div>
+          <div class="info-row"><span class="icon" role="img" aria-label="Ultimo aggiornamento">ðŸ•</span><strong>Ultimo aggiornamento:</strong> ${obsTime}</div>
         `;
 
         spinner.style.display = "none";
@@ -337,9 +291,20 @@
         }
 
         updateChart();
+
       } catch (err) {
         spinner.style.display = "none";
         errorEl.textContent = "Errore: " + err.message;
+      }
+    }
+
+    function manualRefresh() {
+      if (currentLat !== null && currentLon !== null) {
+        getWeatherData(currentLat, currentLon);
+        getForecast(currentLat, currentLon);
+      } else {
+        getWeatherData();
+        getForecast();
       }
     }
 
@@ -365,26 +330,15 @@
             <li>
               <strong>${forecast.dayOfWeek[i]}</strong>: 
               ${forecast.narrative[i]} <br />
-              🌡️ ${forecast.temperatureMin[i]}°C / ${forecast.temperatureMax[i]}°C
+              ðŸŒ¡ï¸ ${forecast.temperatureMin[i]}Â°C / ${forecast.temperatureMax[i]}Â°C
             </li>
           `;
         }
         html += `</ul>`;
         forecastEl.innerHTML = html;
+
       } catch (err) {
         forecastEl.innerHTML = "<p>Errore nel caricamento delle previsioni.</p>";
-      }
-    }
-
-    function manualRefresh() {
-      if (currentLat !== null && currentLon !== null) {
-        getWeatherData(currentLat, currentLon);
-        getForecast(currentLat, currentLon);
-        checkSevereWeather(currentLat, currentLon);
-      } else {
-        getWeatherData();
-        getForecast();
-        checkSevereWeather(41.9028, 12.4964);
       }
     }
 
@@ -396,22 +350,25 @@
             currentLon = pos.coords.longitude;
             getWeatherData(currentLat, currentLon);
             getForecast(currentLat, currentLon);
-            checkSevereWeather(currentLat, currentLon);
           },
           () => {
             getWeatherData();
             getForecast();
-            checkSevereWeather(41.9028, 12.4964);
           }
         );
       } else {
         getWeatherData();
         getForecast();
-        checkSevereWeather(41.9028, 12.4964);
       }
 
       setInterval(() => {
-        manualRefresh();
+        if (currentLat !== null && currentLon !== null) {
+          getWeatherData(currentLat, currentLon);
+          getForecast(currentLat, currentLon);
+        } else {
+          getWeatherData();
+          getForecast();
+        }
       }, 600000); // ogni 10 minuti
     }
 
@@ -421,11 +378,6 @@
 
     function closeRadarModal() {
       document.getElementById("radarModal").style.display = "none";
-    }
-
-    // Richiesta permesso notifiche
-    if (Notification && Notification.permission !== "granted") {
-      Notification.requestPermission();
     }
 
     startApp();
