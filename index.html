@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Stazione Meteorologica</title>
-  <meta name="description" content="Stazione meteorologica in tempo reale. Dati su temperatura, umiditÃ , vento e altro ancora." />
+  <meta name="description" content="Stazione meteorologica in tempo reale. Dati su temperatura, umidità, vento e altro ancora." />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -14,7 +14,6 @@
       text-align: center;
       color: #003366;
     }
-
     .weather-container {
       background-color: #ffffffee;
       padding: 30px;
@@ -23,37 +22,30 @@
       max-width: 600px;
       margin: auto;
     }
-
     h1 {
       color: #004080;
       margin-bottom: 20px;
     }
-
     .info-row {
       margin: 8px 0;
       font-size: 1.1rem;
     }
-
     .icon {
       font-size: 22px;
       vertical-align: middle;
       margin-right: 8px;
     }
-
     #chart-container {
       margin-top: 30px;
     }
-
     canvas {
       max-width: 100%;
     }
-
     #error-message {
       color: #c00;
       font-weight: bold;
       margin-top: 10px;
     }
-
     .loading-spinner {
       margin: 20px auto;
       border: 5px solid #e0e0e0;
@@ -63,19 +55,16 @@
       height: 40px;
       animation: spin 1s linear infinite;
     }
-
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-
     .update-note {
       margin-top: 15px;
       font-style: italic;
       color: #666;
     }
-
     button {
-      margin: 15px 8px;
+      margin: 15px;
       padding: 10px 20px;
       font-size: 1rem;
       background-color: #004080;
@@ -84,51 +73,10 @@
       border-radius: 10px;
       cursor: pointer;
     }
-
     #forecast ul {
       list-style: none;
       padding: 0;
       margin-top: 10px;
-    }
-
-    #radarModal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .radar-content {
-      position: relative;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 90%;
-      max-height: 90%;
-      overflow: hidden;
-    }
-
-    .radar-content iframe {
-      width: 100%;
-      height: 450px;
-      border: none;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #c00;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 1rem;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -140,20 +88,10 @@
     <div id="error-message" role="alert"></div>
     <div class="update-note">I dati si aggiornano ogni 10 minuti.</div>
     <button onclick="manualRefresh()">Aggiorna Ora</button>
-    <button onclick="openRadarModal()">Radar Meteo</button>
-
     <div id="chart-container" aria-label="Grafico storico temperatura">
       <canvas id="tempChart" height="150" role="img" aria-label="Grafico temperatura storica"></canvas>
     </div>
     <div id="forecast" aria-label="Previsioni meteo prossimi giorni"></div>
-  </div>
-
-  <div id="radarModal">
-    <div class="radar-content">
-      <button class="close-btn" onclick="closeRadarModal()">Chiudi</button>
-      <h2>Radar Meteorologico</h2>
-      <iframe src="https://embed.windy.com/embed2.html?lat=41.9&lon=12.5&detailLat=41.9&detailLon=12.5&width=650&height=450&zoom=6&level=surface&overlay=radar&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"></iframe>
-    </div>
   </div>
 
   <noscript>
@@ -188,7 +126,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: "Temperatura (Â°C)",
+            label: "Temperatura (°C)",
             data: data,
             borderColor: "#004080",
             backgroundColor: "rgba(0, 64, 128, 0.1)",
@@ -205,7 +143,7 @@
               beginAtZero: false,
               title: {
                 display: true,
-                text: "Â°C"
+                text: "°C"
               }
             },
             x: {
@@ -258,7 +196,7 @@
         if (!response.ok) throw new Error("Errore HTTP: " + response.status);
 
         const data = await response.json();
-        const obs = data.observations?.[0] ?? data;
+        const obs = data.observations ? data.observations[0] : data;
 
         const temp = obs?.metric?.temp ?? obs?.temperature ?? "N/A";
         const humidity = obs?.humidity ?? "N/A";
@@ -274,11 +212,11 @@
           : "N/A";
 
         weatherEl.innerHTML = `
-          <div class="info-row"><span class="icon" role="img" aria-label="Temperatura">ðŸŒ¡ï¸</span><strong>Temperatura:</strong> ${temp} Â°C</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="UmiditÃ ">ðŸ’§</span><strong>UmiditÃ :</strong> ${humidity}%</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Vento">ðŸŒ¬ï¸</span><strong>Vento:</strong> ${windSpeed} km/h</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Pressione">ðŸ§­</span><strong>Pressione:</strong> ${pressure} hPa</div>
-          <div class="info-row"><span class="icon" role="img" aria-label="Ultimo aggiornamento">ðŸ•</span><strong>Ultimo aggiornamento:</strong> ${obsTime}</div>
+          <div class="info-row"><strong>🌡️ Temperatura:</strong> ${temp} °C</div>
+          <div class="info-row"><strong>💧 Umidità:</strong> ${humidity}%</div>
+          <div class="info-row"><strong>🌬️ Vento:</strong> ${windSpeed} km/h</div>
+          <div class="info-row"><strong>🧭 Pressione:</strong> ${pressure} hPa</div>
+          <div class="info-row"><strong>🕒 Ultimo aggiornamento:</strong> ${obsTime}</div>
         `;
 
         spinner.style.display = "none";
@@ -330,7 +268,7 @@
             <li>
               <strong>${forecast.dayOfWeek[i]}</strong>: 
               ${forecast.narrative[i]} <br />
-              ðŸŒ¡ï¸ ${forecast.temperatureMin[i]}Â°C / ${forecast.temperatureMax[i]}Â°C
+              🌡️ ${forecast.temperatureMin[i]}°C / ${forecast.temperatureMax[i]}°C
             </li>
           `;
         }
@@ -370,14 +308,6 @@
           getForecast();
         }
       }, 600000); // ogni 10 minuti
-    }
-
-    function openRadarModal() {
-      document.getElementById("radarModal").style.display = "flex";
-    }
-
-    function closeRadarModal() {
-      document.getElementById("radarModal").style.display = "none";
     }
 
     startApp();
