@@ -4,12 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Stazione Meteo IROME8355</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-sA+4vP1+U7k2kHxhtjU7U/gXqPvJEIvka9U+4JPa4vE="
-    crossorigin=""
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body {
       font-family: sans-serif;
@@ -23,18 +18,15 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       margin-bottom: 1rem;
     }
-    h1 {
-      color: #0077b6;
-    }
-    #map {
-      height: 400px;
-      border-radius: 1rem;
-      margin-top: 1rem;
-    }
+    h1 { color: #0077b6; }
+    #map { height: 500px; border-radius: 1rem; }
+    #controls { margin-top: 1rem; }
+    button { margin-right: 1rem; }
   </style>
 </head>
 <body>
   <h1>Stazione Meteo IROME8355</h1>
+
   <div class="card" id="meteo">
     <p>Temperatura: <span id="temp">--</span> °C</p>
     <p>Umidità: <span id="hum">--</span> %</p>
@@ -43,17 +35,17 @@
   </div>
 
   <div class="card">
-    <h2>Posizione sulla Mappa + Radar</h2>
+    <h2>Radar Animato</h2>
     <div id="map"></div>
+    <div id="controls">
+      <button onclick="startAnimation()">▶️ Avvia</button>
+      <button onclick="stopAnimation()">⏸️ Pausa</button>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-GZC39xdk8U6veFJFGFf5xguXH9Yyo5f0pM+M9XID1lE="
-    crossorigin=""></script>
-
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const lat = 41.77083;
-    const lon = 12.34000;
+    const lat = 41.77083, lon = 12.34;
 
     async function fetchWeather() {
       try {
@@ -66,7 +58,7 @@
         document.getElementById('time').textContent = new Date(obs.obsTimeUtc).toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
       } catch (error) {
         console.error('Errore nel recupero dei dati meteo:', error);
-        document.getElementById('meteo').innerHTML = '<p>Impossibile recuperare i dati meteo.</p>';
+        document.getElementById('meteo').innerHTML = '<p>Errore nel caricamento dei dati meteo.</p>';
       }
     }
 
@@ -75,22 +67,61 @@
 
     // Inizializza mappa
     const map = L.map('map').setView([lat, lon], 8);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+    L.marker([lat, lon]).addTo(map).bindPopup('Stazione Meteo IROME8355');
 
-    L.marker([lat, lon]).addTo(map)
-      .bindPopup('Stazione Meteo IROME8355')
-      .openPopup();
+    // RainViewer Animation
+    let radarLayers = [];
+    let frameIndex = 0;
+    let animationTimer = null;
+    let frames = [];
 
-    // Layer radar RainViewer
-    const radarLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/nowcast/0/256/{z}/{x}/{y}/6/1_1.png', {
-      tileSize: 256,
-      opacity: 0.6,
-      zIndex: 10,
-      attribution: '&copy; <a href="https://www.rainviewer.com">RainViewer</a>'
-    }).addTo(map);
+    async function loadRadarFrames() {
+      const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+      const json = await res.json();
+      frames = json.radar.nowcast;
+      showRadarFrame(0);
+    }
+
+    function showRadarFrame(index) {
+      if (!frames || frames.length === 0) return;
+      if (radarLayers.length > 0) {
+        map.removeLayer(radarLayers[frameIndex]);
+      }
+
+      frameIndex = index;
+      const frame = frames[frameIndex];
+      const url = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/6/1_1.png`;
+
+      const layer = L.tileLayer(url, {
+        tileSize: 256,
+        opacity: 0.6,
+        zIndex: 1000,
+        attribution: '&copy; RainViewer'
+      }).addTo(map);
+
+      radarLayers[frameIndex] = layer;
+    }
+
+    function startAnimation() {
+      if (animationTimer) return;
+      animationTimer = setInterval(() => {
+        const nextIndex = (frameIndex + 1) % frames.length;
+        showRadarFrame(nextIndex);
+      }, 500);
+    }
+
+    function stopAnimation() {
+      if (animationTimer) {
+        clearInterval(animationTimer);
+        animationTimer = null;
+      }
+    }
+
+    // Carica i frame radar all'avvio
+    loadRadarFrames();
   </script>
 </body>
 </html>
