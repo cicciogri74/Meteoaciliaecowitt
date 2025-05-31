@@ -41,11 +41,6 @@
     <p>🕒 Ultimo aggiornamento: <span id="time">--</span></p>
   </div>
 
-  <div class="card" id="forecast-hourly">
-    <h2>Previsioni orarie (12h)</h2>
-    <div id="hourly-content">Caricamento...</div>
-  </div>
-
   <div class="card" id="forecast-daily">
     <h2>Previsioni 5 giorni</h2>
     <div id="daily-content">Caricamento...</div>
@@ -81,22 +76,6 @@
         document.getElementById('time').textContent = new Date(obs.obsTimeUtc).toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
       } catch (error) {
         console.error('Errore meteo:', error);
-      }
-    }
-
-    async function fetchHourlyForecast() {
-      try {
-        const res = await fetch(`https://api.weather.com/v3/wx/forecast/hourly/12hour?geocode=${lat},${lon}&format=json&units=m&language=it-IT&apiKey=${apiKey}`);
-        const data = await res.json();
-        const html = data.temperature.map((temp, i) => {
-          const hour = new Date(data.validTimeLocal[i]).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-          const icon = data.iconCode[i];
-          const desc = data.narrative[i];
-          return `<div>🕒 <strong>${hour}</strong> — ${desc} — 🌡️ ${temp}°C</div>`;
-        }).join('');
-        document.getElementById('hourly-content').innerHTML = html;
-      } catch (err) {
-        document.getElementById('hourly-content').textContent = 'Errore nel caricamento.';
       }
     }
 
@@ -158,7 +137,6 @@
     }
 
     fetchWeather();
-    fetchHourlyForecast();
     fetchForecast();
     setInterval(fetchWeather, 300000); // ogni 5 min
 
