@@ -31,9 +31,6 @@
       border-radius: 1rem;
       margin-top: 1rem;
     }
-    #layer-control {
-      margin-top: 0.5rem;
-    }
   </style>
 </head>
 <body>
@@ -46,17 +43,8 @@
   </div>
 
   <div class="card">
-    <h2>Posizione sulla Mappa</h2>
+    <h2>Posizione sulla Mappa + Radar</h2>
     <div id="map"></div>
-    <div id="layer-control">
-      <label for="layer">Livello meteo:</label>
-      <select id="layer">
-        <option value="clouds_new">Nuvole</option>
-        <option value="precipitation_new">Precipitazioni</option>
-        <option value="temp_new">Temperatura</option>
-        <option value="wind_new">Vento</option>
-      </select>
-    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -66,7 +54,6 @@
   <script>
     const lat = 41.77083;
     const lon = 12.34000;
-    const apiKeyOWM = 'INSERISCI_LA_TUA_API_KEY_OPENWEATHERMAP';
 
     async function fetchWeather() {
       try {
@@ -87,53 +74,23 @@
     setInterval(fetchWeather, 300000); // ogni 5 minuti
 
     // Inizializza mappa
-    const map = L.map('map').setView([lat, lon], 10);
+    const map = L.map('map').setView([lat, lon], 8);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const marker = L.marker([lat, lon]).addTo(map)
+    L.marker([lat, lon]).addTo(map)
       .bindPopup('Stazione Meteo IROME8355')
       .openPopup();
 
-    // Livelli meteo da OpenWeatherMap
-    const weatherLayers = {
-      clouds_new: null,
-      precipitation_new: null,
-      temp_new: null,
-      wind_new: null
-    };
-
-    function addWeatherLayer(type) {
-      if (weatherLayers[type]) {
-        map.addLayer(weatherLayers[type]);
-        return;
-      }
-
-      const layer = L.tileLayer(`https://tile.openweathermap.org/map/${type}/{z}/{x}/{y}.png?appid=${apiKeyOWM}`, {
-        attribution: '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>'
-      });
-
-      weatherLayers[type] = layer;
-      map.addLayer(layer);
-    }
-
-    function removeAllWeatherLayers() {
-      for (const key in weatherLayers) {
-        if (weatherLayers[key] && map.hasLayer(weatherLayers[key])) {
-          map.removeLayer(weatherLayers[key]);
-        }
-      }
-    }
-
-    document.getElementById('layer').addEventListener('change', function () {
-      removeAllWeatherLayers();
-      addWeatherLayer(this.value);
-    });
-
-    // Carica layer iniziale (nuvole)
-    addWeatherLayer('clouds_new');
+    // Layer radar RainViewer
+    const radarLayer = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/nowcast/0/256/{z}/{x}/{y}/6/1_1.png', {
+      tileSize: 256,
+      opacity: 0.6,
+      zIndex: 10,
+      attribution: '&copy; <a href="https://www.rainviewer.com">RainViewer</a>'
+    }).addTo(map);
   </script>
 </body>
 </html>
